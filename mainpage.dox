@@ -1,0 +1,172 @@
+/** @mainpage libthreading
+
+@authors Osamu Sugiyama
+
+@section intro はじめに
+このライブラリは、スレッドに関する共通処理をまとめた簡易ライブラリです。
+もし、マルチプラットフォーム化などを検討し、汎用のライブラリを探している
+場合は、boostライブラリのAPIを使うことを強く推奨します。
+
+@section releasenotes リリースノート
+
+- @subpage releasenote-0-0-1 "現在のリリースノート"
+
+@section note 前提
+
+- @subpage RulesToReadAPI "APIを読む際の基本事項"
+
+@section reference 主に使用するクラスたち
+-# Thread
+-# Runnable
+-# Queue
+-# ScopedMutex
+-# Lockable
+-# Condition
+
+- クラス図： @subpage ClassDiagram "クラス図"
+
+@section acquirement 取得方法
+
+開発版のライブラリを取得したい場合は次のコマンドを実行してください。
+
+@code
+svn checkout http://turing.irc.atr.jp/repos/is/libthreading/trunk libthreading
+@endcode
+
+開発版は最新のコードを入手できますが、ビルドを含めて実行できるかどうか
+は分かりません。
+
+@section build ビルド方法
+
+ワーキングコピーの存在するプラットフォームでビルドする場合は以下のター
+ゲットを実行してください。
+
+@code
+cd libthreading
+./bootstrap
+./configure
+make
+@endcode
+
+@section install インストール方法
+
+インストールをする場合は以下のターゲットを実行してください。
+
+@code
+sudo make install
+@endcode
+
+インストール先はデフォルトでは/usr/local/libになります。インストール先
+を変えたい場合は、configureを実行するときにprefixを指定する必要がありま
+す。
+
+@code
+./configure --prefix=/opt/local
+make
+sudo make install
+@endcode
+
+@section uninstall アンインストール方法
+
+アンインストールをする場合は以下のターゲットを実行してください。
+
+@code
+sudo make uninstall
+@endcode
+
+@section liblinks ライブラリを使用する際のビルドオプション
+
+ライブラリを使用して、プログラムをビルドする際のビルドオプションは以下
+のコマンドで取得することが可能です。
+
+@code
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfg:
+pkg-config --cflags --libs libthreading
+> -I/usr/local/include  -L/usr/local/lib -lthreading -lpthread -lstdc++ 
+@endcode
+
+exportの設定は、.bashrcなどの設定ファイルに設定しておくことをおすすめします。
+
+@section sample-codes サンプル
+
+サンプルコードは、sampleにまとめてあります。ライブラリを利用する際に、
+参考にしてください。サンプルコードをビルドしたくない場合は、configure実行時
+に以下のオプションを指定してください。
+
+@code
+./configure --disable-sample
+make
+@endcode
+
+@section document ドキュメント
+
+ドキュメントの生成をする場合は以下のターゲットを実行してください。
+
+@code
+make doc
+@endcode
+
+doc/html/index.htmlをブラウザで開くことで、このライブラリのAPIリファレ
+ンスを参照することが可能です。
+
+@section package 再配布
+
+修正したものを再配布する場合は以下のターゲットを実行するとtarballを
+生成することができます。
+
+@code
+make dist
+ls
+> libthreading-<VERSION>.tar.gz
+@endcode
+
+*/
+
+/** @page releasenote-0-0-1 Release Note 0.0.1
+@section notes リリースノート
+libthreadingの公開版ファーストリリースです。
+
+
+@section requirements 動作要件
+
+このライブラリは以下のプラットフォームでビルドができることが確認されています。
+
+- Mac OS X 10.6 (snow leopard)
+
+@section restriction 制限事項
+
+*/
+
+/** @page RulesToReadAPI APIを読む際の基本事項
+
+- <b>NULLの入力はassert</b>
+  - ポインタを引数として持つメソッド・関数は原則、NULLが入るとassertさ
+    れます。NULLを入れても大丈夫なように設計されている場合、その旨が明
+    記されています。
+- <b>動的に確保されたインスタンスは原則、呼び出し側で解放</b>
+  - 動的に生成したインスタンスのポインタを返すcreateのようなメソッド・
+    関数は、特に記載がない場合、そのメモリの解放処理は、呼び出した側が
+    責任を持って行うこととします。
+- <b>メソッド、関数は原則、スレッドセーフではない</b>
+  - 特別な記述がない限り、定義されるメソッド・関数はスレッドセーフでは
+    ありません。スレッドセーフなメソッド・関数である場合、その旨が明記
+    されています。
+- <b>メソッド・関数は原則、同期実行である</b>
+  - 特に記述がない場合、その関数・メソッドは同期実行されます。非同期に
+    実行されるものはその旨が明記されます。
+- <b>ファクトリメソッドcreateは、完全な状態のインスタンスを返す</b>
+  - 生成時に失敗する可能性のある何らかの処理（例えばメモリの動的確保）
+    が必要なクラスの場合、staticなファクトリメソッドcreateが定義されま
+    す。createは呼び出されたクラスのインスタンスの生成、及び、初期化処
+    理を行い、その全てが成功した場合のみ、インスタンスのポインタを返し
+    ます。生成過程のどこかで失敗した場合、それまで確保したメモリを解放
+    してから、NULLを返します。このようなcreateメソッドを用意することで、
+    インスタンス内の状態数の増加を抑制します。
+*/
+
+/** @page ClassDiagram クラス図
+
+\image html ClassDiagram.png "クラス図"
+
+*/
+

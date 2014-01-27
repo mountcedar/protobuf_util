@@ -1,6 +1,10 @@
 # -*- CMakeLists.txt -*-
 
 if( APPLE )
+  ##
+  ## homebrewでboostがインストールされている前提の設定です
+  ##
+
   #set (CMAKE_CXX_FLAGS "-DSITT -DDARWIN")
   set (CMAKE_OSX_ARCHITECTURES "x86_64;")
   #set (CMAKE_OSX_ARCHITECTURES "i386;")
@@ -8,14 +12,12 @@ if( APPLE )
 
   INCLUDE_DIRECTORIES (
      "${PROJECT_SOURCE_DIR}/include"
-    "/opt/local/include"
     "/usr/local/include"
     )
 
   ## LDFLAGSの設定
   LINK_DIRECTORIES (
      /usr/local/lib
-     /opt/local/lib
      )
 
 elseif ( LINUX )

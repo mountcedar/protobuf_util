@@ -12,7 +12,7 @@ SET(serial "0.0.1")
 SET(soserial "0")
 
 add_subdirectory (sample)
-add_subdirectory (sample/boost.asio)
+# add_subdirectory (sample/boost.asio)
 
 # クリーン対象の追加
 SET_DIRECTORY_PROPERTIES(

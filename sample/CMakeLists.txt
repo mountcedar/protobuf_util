@@ -74,10 +74,16 @@ endif()
 
 # プログラムの追加
 add_executable(
-	test_comm
+	test_comm_server
 	test_comm.cpp
 	comm.pb.cc
 	)
+
+add_executable(
+  test_comm_client
+  test_comm_client.cpp
+  comm.pb.cc
+  )
 
 # add_executable(
 # 	test_sensor_comm
@@ -88,13 +94,21 @@ add_executable(
 
 if ( APPLE )
 
-   TARGET_LINK_LIBRARIES (test_comm
+   TARGET_LINK_LIBRARIES (test_comm_server
     	${Boost_LIBRARIES}
 	boost_system-mt
 	boost_date_time-mt
 	boost_thread-mt
 	protobuf
 	stdc++)
+
+   TARGET_LINK_LIBRARIES (test_comm_client
+      ${Boost_LIBRARIES}
+  boost_system-mt
+  boost_date_time-mt
+  boost_thread-mt
+  protobuf
+  stdc++)
 
  #   TARGET_LINK_LIBRARIES (test_sensor_comm
  #    	${Boost_LIBRARIES}
@@ -106,13 +120,21 @@ if ( APPLE )
 
 elseif ( LINUX )
 
-   TARGET_LINK_LIBRARIES (test_comm
+   TARGET_LINK_LIBRARIES (test_comm_server
    	${Boost_LIBRARIES}
 	boost_system-mt
 	boost_date_time-mt
 	boost_thread-mt
 	protobuf
 	stdc++)
+
+   TARGET_LINK_LIBRARIES (test_comm_client
+    ${Boost_LIBRARIES}
+  boost_system-mt
+  boost_date_time-mt
+  boost_thread-mt
+  protobuf
+  stdc++)
 
  #   TARGET_LINK_LIBRARIES (test_sensor_comm
  #   	${Boost_LIBRARIES}
@@ -126,12 +148,23 @@ elseif ( WIN32 )
 
    #set(CMAKE_CXX_FLAGS "-D_DEBUG")
 
-   TARGET_LINK_LIBRARIES (test_comm
+   ##
+   ## vcのバージョンは古い可能性があるので、確認して適宜書き換えてください
+   ##
+
+   TARGET_LINK_LIBRARIES (test_comm_server
 	libboost_system-vc100-mt-gd-1_51
 	libboost_date_time-vc100-mt-gd-1_51
 	libboost_thread-vc100-mt-gd-1_51
 	libprotobuf
 	)
+
+   TARGET_LINK_LIBRARIES (test_comm_client
+  libboost_system-vc100-mt-gd-1_51
+  libboost_date_time-vc100-mt-gd-1_51
+  libboost_thread-vc100-mt-gd-1_51
+  libprotobuf
+  )
 
  #   TARGET_LINK_LIBRARIES (test_sensor_comm
 	# libboost_system-vc100-mt-gd-1_51

@@ -13,10 +13,6 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/shared_ptr.hpp>
 
-#if defined(__linux__) || defined(__APPLE__)
-#include "debug.h"
-#endif // #if defined(__linux__) || defined(__APPLE__)
-
 using boost::asio::ip::tcp;
 using std::vector;
 using std::string;
@@ -30,6 +26,50 @@ using std::pair;
 
 #define BEGIN_NAMESPACE_PROTOBUF_UTILS namespace NAMESPACE_PROTOBUF_UTILS {
 #define END_NAMESPACE_PROTOBUF_UTILS }
+
+/**
+   @brief デバッグプリントの定義
+
+   @details
+   formatに従ってメッセージを関数名、ファイル名、行番号と共にDEBUGOUTに出力し、改行する．
+
+   @param[in] format fprintfのformatと同じ
+   @param[in] args fprintfの残りの引数と同義
+
+   @note windowsの場合、プリプロセッサの変数がないので、普通のfprintf
+ */
+#if !defined(DEBUGOUT)
+   #define DEBUGOUT stderr
+#endif // !defined(DEBUGOUT)
+
+#if defined(__linux__) || defined(__APPLE__)
+
+	#define DEBUG_PRINTLN(format, args...)				\
+		fprintf(DEBUGOUT, "[%s : %s, line %d] "format"\n",	\
+			__FUNCTION__, __FILE__, __LINE__, ##args)
+
+	#define DEBUG_COLOR_PRINTLN(color, format, args...)			 \
+		fprintf(DEBUGOUT,						 \
+			"\x1b["color"m""[%s : %s, line %d] "format"\x1b[0m""\n", \
+			 __FUNCTION__, __FILE__, __LINE__, ##args)
+
+	#define DEBUGPRINT_COLOR_FG_RED    "31" ///< 赤(文字色) 
+	#define DEBUGPRINT_FONT_BOLD       "1"  ///< 太字  
+
+	#define ERROR_PRINTLN(format, args...)					  \
+		DEBUG_COLOR_PRINTLN(DEBUGPRINT_COLOR_FG_RED";"DEBUGPRINT_FONT_BOLD, \
+				  format,					  \
+				  ##args)
+
+#else // #if defined(__linux__) || defined(__APPLE__)
+
+	#define DEBUG_PRINTLN(format, args...)				\
+		fprintf(DEBUGOUT, format"\n", ##args)
+
+	#define ERROR_PRINTLN(format, args...)				\
+		fprintf(DEBUGOUT, format"\n", ##args)
+
+#endif // #if defined(__linux__) || defined(__APPLE__)
 
 /**
    @brief the top namespace to make the namespace original.
@@ -134,7 +174,7 @@ public:
 
 	tcp::socket& socket(void);
 
-	void start(void);
+	bool start(void);
 
 	void send(Serializable& data, boost::system::error_code& error);
 
@@ -232,15 +272,24 @@ RequestHandler::socket() {
 	return socket_;
 }
 
-void 
+bool
 RequestHandler::start() {
-#if defined(__linux__) || defined(__APPLE__)
 	DEBUG_PRINTLN("STARTED");
-#endif // #if defined(__linux__) || defined(__APPLE__)
+	boost::system::error_code error_;
+	boost::asio::ip::tcp::endpoint endpoint = socket_.remote_endpoint(error_);
 
-	hostname_ = socket_.remote_endpoint().address().to_string();
+	if (error_) {
+		DEBUG_PRINTLN("endpoint error<%d>: %s", error_.value(), error_.message().c_str());
+		return false;
+	}
+
+	hostname_ = endpoint.address().to_string();
+	DEBUG_PRINTLN("HOSTNAME: %s", hostname_.c_str());
+
 	host_.register_request(hostname_, this);
 	char* buff = reinterpret_cast<char*>(&buff_size_);
+	DEBUG_PRINTLN("ASYNC READ SOME");
+
 	socket_.async_read_some(
 		//boost::asio::buffer(data, max_length),
 		boost::asio::buffer(buff, sizeof(int)),
@@ -251,6 +300,7 @@ RequestHandler::start() {
 			)
 		);
 	active_ = true;
+	return true;
 }
 
 void
@@ -271,9 +321,7 @@ RequestHandler::send(Serializable& data, boost::system::error_code& error) {
 		);
 
 	if (error) {
-#if defined(__linux__) || defined(__APPLE__)
 		ERROR_PRINTLN("Failed to send size: %d", size);
-#endif // #if defined(__linux__) || defined(__APPLE__)
 		return;
 	}
 
@@ -288,10 +336,8 @@ RequestHandler::send(Serializable& data, boost::system::error_code& error) {
 		);
 	
 	if (error) {
-#if defined(__linux__) || defined(__APPLE__)
 		ERROR_PRINTLN("Failed to send binary: %s", 
 			      serialized_data.c_str());
-#endif // #if defined(__linux__) || defined(__APPLE__)
 	}
 
 	//DEBUG_PRINTLN("sending completed");
@@ -303,6 +349,7 @@ RequestHandler::handle_read_size(const boost::system::error_code& error,
 				 size_t bytes_transferred) {
 	if (!error) {
 		buff_size_ = ntohl(buff_size_);
+		DEBUG_PRINTLN("buff size: %d", buff_size_);
 		/*
 		buff_ = boost::shared_ptr<char>(
 			(char*)malloc(buff_size_), 
@@ -322,10 +369,7 @@ RequestHandler::handle_read_size(const boost::system::error_code& error,
 			);
 		
 	} else {
-#if defined(__linux__) || defined(__APPLE__)
 		ERROR_PRINTLN("FAILED");
-#endif // #if defined(__linux__) || defined(__APPLE__)
-		//delete this;
 		finalize();
 	}
 }
@@ -336,7 +380,7 @@ RequestHandler::handle_read_data(const boost::system::error_code& error,
 	if (!error) {
 		string input(reinterpret_cast<char const*>(buff_.get()), 
 			     bytes_transferred);
-		//DEBUG_PRINTLN("input data size: %ld", input.size());
+		DEBUG_PRINTLN("input data size: %ld", input.size());
 		Serializable* inst = builder_.create(input);
 		boost::shared_ptr<Serializable> data_obj(inst);
 		if (inst != NULL) {
@@ -345,9 +389,7 @@ RequestHandler::handle_read_data(const boost::system::error_code& error,
 				reciever->onRecv(data_obj.get());
 			}
 		} else {
-#if defined(__linux__) || defined(__APPLE__)
 			ERROR_PRINTLN("FAILED");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 		}
 		char* buff = reinterpret_cast<char*>(&buff_size_);
 		socket_.async_read_some(
@@ -357,9 +399,7 @@ RequestHandler::handle_read_data(const boost::system::error_code& error,
 				    boost::asio::placeholders::bytes_transferred));
 		
 	} else {
-#if defined(__linux__) || defined(__APPLE__)
 		ERROR_PRINTLN("FAILED");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 		//delete this;
 		finalize();
 	}	
@@ -418,9 +458,7 @@ ProtocolBufferServer::~ProtocolBufferServer(void) {
 	terminate_ = true;
 	thread_.timed_join(boost::posix_time::milliseconds(500));
 	terminate_ = false;
-#if defined(__linux__) || defined(__APPLE__)
 	DEBUG_PRINTLN("ProtocolBufferServer terminated.");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 }
 
 
@@ -430,17 +468,13 @@ ProtocolBufferServer::create(short port, DataBuilder& builder,
 	try {
 		ProtocolBufferServer* serverp = new ProtocolBufferServer(port, builder);
 		if (!serverp) {
-#if defined(__linux__) || defined(__APPLE__)
 			ERROR_PRINTLN("cannot create ProtocolBufferServer object.");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 			error = connection_error_;
 		}
 		boost::shared_ptr<ProtocolBufferServer> server(serverp);
 		return server;
 	} catch (...) {
-#if defined(__linux__) || defined(__APPLE__)
 		ERROR_PRINTLN("failed to created ProtocolBufferServer object.");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 		error = connection_error_;
 		boost::shared_ptr<ProtocolBufferServer> server((ProtocolBufferServer*)NULL);
 		return server;
@@ -479,10 +513,8 @@ ProtocolBufferServer::send(Serializable& data,
 		RequestHandler* request = pair_.second;
 		request->send(data, error);
 		if (error) {
-#if defined(__linux__) || defined(__APPLE__)
 			ERROR_PRINTLN("failed to send data");
 			break;
-#endif // #if defined(__linux__) || defined(__APPLE__)
 		}
 	}
 	return;
@@ -491,11 +523,19 @@ ProtocolBufferServer::send(Serializable& data,
 void 
 ProtocolBufferServer::handle_accept(RequestHandler* new_session,
 				    const boost::system::error_code& error) {
-#if defined(__linux__) || defined(__APPLE__)
 	DEBUG_PRINTLN("ACCEPTED");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 	if (!error || !terminate_) {
-		new_session->start();
+		// boost::system::error_code error_;
+		// boost::asio::ip::tcp::endpoint endpoint = new_session->socket().remote_endpoint(error_);
+		// if (error_) {
+		// 	DEBUG_PRINTLN("endpoint error<%d>: %s", error_.value(), error_.message().c_str());
+		// }
+		// string hostname_ = endpoint.address().to_string();
+		// DEBUG_PRINTLN("HOSTNAME: %s", hostname_.c_str());
+
+		if(new_session->start()) {
+			DEBUG_PRINTLN("new session start failed.");
+		}
 		boost::shared_ptr<RequestHandler> request(
 			new RequestHandler(
 				*this,
@@ -515,9 +555,7 @@ ProtocolBufferServer::handle_accept(RequestHandler* new_session,
 			);
 	}
 	else {
-#if defined(__linux__) || defined(__APPLE__)
 		ERROR_PRINTLN("FAILED to create new session");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 		//delete new_session;
 	}
 }
@@ -536,19 +574,13 @@ public:
 	{
 		boost::system::error_code error = boost::asio::error::host_not_found;
 		iterator = resolver.resolve(query);
-#if defined(__linux__) || defined(__APPLE__)
 		DEBUG_PRINTLN("connecting %s:%d", hostname.c_str(), port);
-#endif // #if defined(__linux__) || defined(__APPLE__)
 		socket_.connect(*iterator, error);
 		if (error) {
-#if defined(__linux__) || defined(__APPLE__)
 			ERROR_PRINTLN("FAILED TO CONNECT SERVER: %s", 
 				      hostname.c_str());
-#endif // #if defined(__linux__) || defined(__APPLE__)
 		} else {
-#if defined(__linux__) || defined(__APPLE__)
 			DEBUG_PRINTLN("Connected...");
-#endif
 		}
 	}
 
@@ -557,28 +589,28 @@ public:
 		string serialized_data;
 		data.serialize(serialized_data);
 		int size = data.getSerializedSize();
+		DEBUG_PRINTLN("writing size: <%d>", size);
 		// convert to long for network stream
 		size = htonl(size);
 		const char * px = reinterpret_cast<const char*>(&size);
 		
-		//DEBUG_PRINTLN("writing size: <%s><%d>", px, size);
+		DEBUG_PRINTLN("writing size: <%s><%d>", px, size);
 		boost::asio::write(
 			socket_,
 			boost::asio::buffer(px, sizeof(int)),
 			boost::asio::transfer_all()
 			);
 
-		/*
 		DEBUG_PRINTLN("writing data stream: <%s>", 
 			      serialized_data.c_str());
-		*/
+		
 		boost::asio::write(
 			socket_, 
 			boost::asio::buffer(serialized_data, size),
 			boost::asio::transfer_all()
 			);
 
-		//DEBUG_PRINTLN("sending completed");
+		DEBUG_PRINTLN("sending completed");
 		return true;
 	}
 
@@ -594,9 +626,7 @@ public:
 			);
 
 		if (error) {
-#if defined(__linux__) || defined(__APPLE__)
 			ERROR_PRINTLN("failed to recieve the data");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 			return;
 		}
 		
@@ -609,9 +639,7 @@ public:
 			error
 			);
 		if (error) {
-#if defined(__linux__) || defined(__APPLE__)
 			ERROR_PRINTLN("failed to recieve the data");
-#endif // #if defined(__linux__) || defined(__APPLE__)
 			return;
 		}
 		string input(

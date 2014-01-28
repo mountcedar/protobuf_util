@@ -38,38 +38,48 @@ using std::pair;
 
    @note windowsの場合、プリプロセッサの変数がないので、普通のfprintf
  */
+
+#if !defined(ENABLE_DEBUGPRINT)
+   #define ENABLE_DEBUGPRINT 0
+#endif // #if !defined(ENABLE_DEBUGPRINT)
+
 #if !defined(DEBUGOUT)
    #define DEBUGOUT stderr
 #endif // !defined(DEBUGOUT)
 
-#if defined(__linux__) || defined(__APPLE__)
+#if ENABLE_DEBUGPRINT
+	#if defined(__linux__) || defined(__APPLE__)
 
-	#define DEBUG_PRINTLN(format, args...)				\
-		fprintf(DEBUGOUT, "[%s : %s, line %d] "format"\n",	\
-			__FUNCTION__, __FILE__, __LINE__, ##args)
+		#define DEBUG_PRINTLN(format, args...)				\
+			fprintf(DEBUGOUT, "[%s : %s, line %d] "format"\n",	\
+				__FUNCTION__, __FILE__, __LINE__, ##args)
 
-	#define DEBUG_COLOR_PRINTLN(color, format, args...)			 \
-		fprintf(DEBUGOUT,						 \
-			"\x1b["color"m""[%s : %s, line %d] "format"\x1b[0m""\n", \
-			 __FUNCTION__, __FILE__, __LINE__, ##args)
+		#define DEBUG_COLOR_PRINTLN(color, format, args...)			 \
+			fprintf(DEBUGOUT,						 \
+				"\x1b["color"m""[%s : %s, line %d] "format"\x1b[0m""\n", \
+				 __FUNCTION__, __FILE__, __LINE__, ##args)
 
-	#define DEBUGPRINT_COLOR_FG_RED    "31" ///< 赤(文字色) 
-	#define DEBUGPRINT_FONT_BOLD       "1"  ///< 太字  
+		#define DEBUGPRINT_COLOR_FG_RED    "31" ///< 赤(文字色) 
+		#define DEBUGPRINT_FONT_BOLD       "1"  ///< 太字  
 
-	#define ERROR_PRINTLN(format, args...)					  \
-		DEBUG_COLOR_PRINTLN(DEBUGPRINT_COLOR_FG_RED";"DEBUGPRINT_FONT_BOLD, \
-				  format,					  \
-				  ##args)
+		#define ERROR_PRINTLN(format, args...)					  \
+			DEBUG_COLOR_PRINTLN(DEBUGPRINT_COLOR_FG_RED";"DEBUGPRINT_FONT_BOLD, \
+					  format,					  \
+					  ##args)
 
-#else // #if defined(__linux__) || defined(__APPLE__)
+	#else // #if defined(__linux__) || defined(__APPLE__)
 
-	#define DEBUG_PRINTLN(format, args...)				\
-		fprintf(DEBUGOUT, format"\n", ##args)
+		#define DEBUG_PRINTLN(format, args...)				\
+			fprintf(DEBUGOUT, format"\n", ##args)
 
-	#define ERROR_PRINTLN(format, args...)				\
-		fprintf(DEBUGOUT, format"\n", ##args)
+		#define ERROR_PRINTLN(format, args...)				\
+			fprintf(DEBUGOUT, format"\n", ##args)
 
-#endif // #if defined(__linux__) || defined(__APPLE__)
+	#endif // #if defined(__linux__) || defined(__APPLE__)
+#else // #if ENABLE_DEBUGPRINT
+	#define DEBUG_PRINTLN(format, args...)
+	#define ERROR_PRINTLN(format, args...)
+#endif // #if ENABLE_DEBUGPRINT
 
 /**
    @brief the top namespace to make the namespace original.

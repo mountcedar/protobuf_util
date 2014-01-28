@@ -20,7 +20,7 @@ if( APPLE )
      /usr/local/lib
      )
 
-elseif ( LINUX )
+elseif ( UNIX )
   #SET (CMAKE_CXX_FLAGS "-DSITT")
   set(CMAKE_BUILD_TYPE Debug)
 
@@ -118,21 +118,21 @@ if ( APPLE )
 	# protobuf
 	# stdc++)
 
-elseif ( LINUX )
+elseif ( UNIX )
 
-   TARGET_LINK_LIBRARIES (test_comm_server
+  TARGET_LINK_LIBRARIES (test_comm_server
    	${Boost_LIBRARIES}
-	boost_system-mt
-	boost_date_time-mt
-	boost_thread-mt
+	boost_system
+	boost_date_time
+	boost_thread
 	protobuf
 	stdc++)
 
    TARGET_LINK_LIBRARIES (test_comm_client
     ${Boost_LIBRARIES}
-  boost_system-mt
-  boost_date_time-mt
-  boost_thread-mt
+  boost_system
+  boost_date_time
+  boost_thread
   protobuf
   stdc++)
 

@@ -215,9 +215,9 @@ public:
 
 	void register_reciever(Recievable* reciever);
 
-	void register_request(string hostname, RequestHandler* request);
+	void register_request(string& hostname, RequestHandler* request);
 
-	void deregister_request(string hostname);
+	void deregister_request(string& hostname);
 
 	void send(Serializable& data, boost::system::error_code& error);
 
@@ -233,7 +233,7 @@ private:
 	vector<Recievable*> recievers_;
 	boost::thread thread_;
 	bool terminate_;
-	map<string, RequestHandler*> requests_;
+	map<string*, RequestHandler*> requests_;
 	static boost::system::error_code connection_error_;
 
 	ProtocolBufferServer(short port,
@@ -380,7 +380,7 @@ RequestHandler::handle_read_data(const boost::system::error_code& error,
 	if (!error) {
 		string input(reinterpret_cast<char const*>(buff_.get()), 
 			     bytes_transferred);
-		DEBUG_PRINTLN("input data size: %ld", input.size());
+		DEBUG_PRINTLN("input data size: %d", input.size());
 		Serializable* inst = builder_.create(input);
 		boost::shared_ptr<Serializable> data_obj(inst);
 		if (inst != NULL) {
@@ -492,23 +492,26 @@ ProtocolBufferServer::get_recievers(void) {
 }
 
 void
-ProtocolBufferServer::register_request(string hostname, 
+ProtocolBufferServer::register_request(string& hostname, 
 				       RequestHandler* request) {
-	requests_.insert(map<string, RequestHandler*>::value_type(
-				 hostname,
+	boost::shared_ptr<string> hostname_(new string(hostname));
+
+	DEBUG_PRINTLN("hostname: %s", hostname_.get()->c_str());
+	requests_.insert(map<string*, RequestHandler*>::value_type(
+				 hostname_.get(),
 				 request)
 		);
 }
 
 void
-ProtocolBufferServer::deregister_request(string hostname) {
-	requests_.erase(hostname);
+ProtocolBufferServer::deregister_request(string& hostname) {
+	//requests_.erase(&hostname);
 }
 
 void
 ProtocolBufferServer::send(Serializable& data,
 			   boost::system::error_code& error) {
-	pair<string, RequestHandler*> pair_;
+	pair<string*, RequestHandler*> pair_;
 	BOOST_FOREACH(pair_, requests_) {
 		RequestHandler* request = pair_.second;
 		request->send(data, error);

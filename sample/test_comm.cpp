@@ -112,7 +112,8 @@ int main(int argc, char* argv[])
 	// 	}
 	// }
 
-
+	string input;
+	std::cin >> input;
 	
 	server.send(impl, error);
 	if (error) {
@@ -139,8 +140,7 @@ int main(int argc, char* argv[])
 	// 	return -1;
 	// }
 
-	string input;
 	std::cin >> input;
-
+	
 	return 0;
 }

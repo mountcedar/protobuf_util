@@ -215,9 +215,11 @@ public:
 
 	void register_reciever(Recievable* reciever);
 
-	void register_request(string& hostname, RequestHandler* request);
+	//void register_request(string& hostname, RequestHandler* request);
+	void register_request(RequestHandler* request);
 
-	void deregister_request(string& hostname);
+	//void deregister_request(string& hostname);
+	void deregister_request(RequestHandler* request);
 
 	void send(Serializable& data, boost::system::error_code& error);
 
@@ -233,7 +235,8 @@ private:
 	vector<Recievable*> recievers_;
 	boost::thread thread_;
 	bool terminate_;
-	map<string*, RequestHandler*> requests_;
+	//map<string, RequestHandler*> requests_;
+	vector<RequestHandler*> requests_;
 	static boost::system::error_code connection_error_;
 
 	ProtocolBufferServer(short port,
@@ -263,7 +266,8 @@ RequestHandler::~RequestHandler(void) {}
 void
 RequestHandler::finalize(void) {
 	active_ = false;
-	host_.deregister_request(hostname_);
+	//host_.deregister_request(hostname_);
+	host_.deregister_request(this);
 	DEBUG_PRINTLN("request handler terminated.");
 }
 
@@ -286,7 +290,7 @@ RequestHandler::start() {
 	hostname_ = endpoint.address().to_string();
 	DEBUG_PRINTLN("HOSTNAME: %s", hostname_.c_str());
 
-	host_.register_request(hostname_, this);
+	//host_.register_request(hostname_, this);
 	char* buff = reinterpret_cast<char*>(&buff_size_);
 	DEBUG_PRINTLN("ASYNC READ SOME");
 
@@ -492,28 +496,22 @@ ProtocolBufferServer::get_recievers(void) {
 }
 
 void
-ProtocolBufferServer::register_request(string& hostname, 
-				       RequestHandler* request) {
-	boost::shared_ptr<string> hostname_(new string(hostname));
-
-	DEBUG_PRINTLN("hostname: %s", hostname_.get()->c_str());
-	requests_.insert(map<string*, RequestHandler*>::value_type(
-				 hostname_.get(),
-				 request)
-		);
+ProtocolBufferServer::register_request(RequestHandler* request) {
+	requests_.push_back(request);
 }
 
 void
-ProtocolBufferServer::deregister_request(string& hostname) {
+ProtocolBufferServer::deregister_request(RequestHandler* request) {
 	//requests_.erase(&hostname);
 }
 
 void
 ProtocolBufferServer::send(Serializable& data,
 			   boost::system::error_code& error) {
-	pair<string*, RequestHandler*> pair_;
-	BOOST_FOREACH(pair_, requests_) {
-		RequestHandler* request = pair_.second;
+	//pair<string, RequestHandler*> pair_;
+	RequestHandler* request = NULL;
+	BOOST_FOREACH(request, requests_) {
+		//RequestHandler* request = pair_.second;
 		request->send(data, error);
 		if (error) {
 			ERROR_PRINTLN("failed to send data");
@@ -535,8 +533,8 @@ ProtocolBufferServer::handle_accept(RequestHandler* new_session,
 		// }
 		// string hostname_ = endpoint.address().to_string();
 		// DEBUG_PRINTLN("HOSTNAME: %s", hostname_.c_str());
-
-		if(new_session->start()) {
+		register_request(new_session);
+		if(!new_session->start()) {
 			DEBUG_PRINTLN("new session start failed.");
 		}
 		boost::shared_ptr<RequestHandler> request(

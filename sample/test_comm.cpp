@@ -99,21 +99,21 @@ int main(int argc, char* argv[])
 	impl.print();
 	DEBUG_PRINTLN("serialized size: %d", impl.getSerializedSize());
 
-	// ProtocolBufferClient client("localhost", 1111, msg_impl);
+	ProtocolBufferClient client("localhost", 1111, msg_impl);
 
-	// boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
-	// for (int i = 0; i < 10; i++) {
-	// 	try {
-	// 		client.send(impl);
-	// 		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
-	// 	} catch (...) {
-	// 		ERROR_PRINTLN("client send failed.");
-	// 		return -1;
-	// 	}
-	// }
+	boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+	for (int i = 0; i < 10; i++) {
+		try {
+			client.send(impl);
+			boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+		} catch (...) {
+			ERROR_PRINTLN("client send failed.");
+			return -1;
+		}
+	}
 
-	string input;
-	std::cin >> input;
+	// string input;
+	// std::cin >> input;
 	
 	server.send(impl, error);
 	if (error) {
@@ -121,26 +121,26 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 	
-	// boost::thread bt(boost::bind(&ProtocolBufferServer::send, 
-	// 			     &server, 
-	// 			     impl, 
-	// 			     error
-	// 			 )
-	// 	);
+	boost::thread bt(boost::bind(&ProtocolBufferServer::send, 
+				     &server, 
+				     impl, 
+				     error
+				 )
+		);
 
 
-	// DEBUG_PRINTLN("client recieving data");
-	// boost::shared_ptr<Serializable> data;
-	// client.recv(data, error);
-	// if (!error) {
-	// 	MessageImpl* impl = (MessageImpl*)data.get();
-	// 	impl->print();
-	// } else {
-	// 	ERROR_PRINTLN("error occured while client recieving the data");
-	// 	return -1;
-	// }
+	DEBUG_PRINTLN("client recieving data");
+	boost::shared_ptr<Serializable> data;
+	client.recv(data, error);
+	if (!error) {
+		MessageImpl* impl = (MessageImpl*)data.get();
+		impl->print();
+	} else {
+		ERROR_PRINTLN("error occured while client recieving the data");
+		return -1;
+	}
 
-	std::cin >> input;
+	// std::cin >> input;
 	
 	return 0;
 }

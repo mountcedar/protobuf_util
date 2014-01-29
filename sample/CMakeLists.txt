@@ -85,6 +85,12 @@ add_executable(
   comm.pb.cc
   )
 
+add_executable(
+  test_comm
+  test_comm.cpp
+  comm.pb.cc
+  )
+
 # add_executable(
 # 	test_sensor_comm
 # 	test_sensor_comm.cpp
@@ -110,6 +116,16 @@ if ( APPLE )
   protobuf
   stdc++)
 
+   TARGET_LINK_LIBRARIES (test_comm
+      ${Boost_LIBRARIES}
+  boost_system-mt
+  boost_date_time-mt
+  boost_thread-mt
+  protobuf
+  stdc++
+  )
+
+
  #   TARGET_LINK_LIBRARIES (test_sensor_comm
  #    	${Boost_LIBRARIES}
 	# boost_system-mt
@@ -129,6 +145,14 @@ elseif ( UNIX )
 	stdc++)
 
    TARGET_LINK_LIBRARIES (test_comm_client
+    ${Boost_LIBRARIES}
+  boost_system
+  boost_date_time
+  boost_thread
+  protobuf
+  stdc++)
+
+   TARGET_LINK_LIBRARIES (test_comm
     ${Boost_LIBRARIES}
   boost_system
   boost_date_time
@@ -160,6 +184,13 @@ elseif ( WIN32 )
 	)
 
    TARGET_LINK_LIBRARIES (test_comm_client
+  libboost_system-vc100-mt-gd-1_51
+  libboost_date_time-vc100-mt-gd-1_51
+  libboost_thread-vc100-mt-gd-1_51
+  libprotobuf
+  )
+
+   TARGET_LINK_LIBRARIES (test_comm
   libboost_system-vc100-mt-gd-1_51
   libboost_date_time-vc100-mt-gd-1_51
   libboost_thread-vc100-mt-gd-1_51

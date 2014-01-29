@@ -194,6 +194,8 @@ public:
 	void handle_read_data(const boost::system::error_code& error,
 			      size_t bytes_transferred);
 
+	bool is_active(void);
+
 private:
 	ProtocolBufferServer& host_;
 	tcp::socket socket_;
@@ -230,6 +232,8 @@ public:
 
 	//void deregister_request(string& hostname);
 	void deregister_request(RequestHandler* request);
+
+	void reconfigure_handlers ();
 
 	void send(Serializable& data, boost::system::error_code& error);
 
@@ -277,7 +281,7 @@ void
 RequestHandler::finalize(void) {
 	active_ = false;
 	//host_.deregister_request(hostname_);
-	host_.deregister_request(this);
+	//host_.deregister_request(this);
 	DEBUG_PRINTLN("request handler terminated.");
 }
 
@@ -419,6 +423,10 @@ RequestHandler::handle_read_data(const boost::system::error_code& error,
 	}	
 }
 
+bool
+RequestHandler::is_active(void) {
+	return active_;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Definition of Protocol Buffer Server.
@@ -516,9 +524,24 @@ ProtocolBufferServer::deregister_request(RequestHandler* request) {
 }
 
 void
+ProtocolBufferServer::reconfigure_handlers(void) {
+	RequestHandler* handler = NULL;
+	vector<vector<RequestHandler*>::iterator> zombies;
+
+	vector<RequestHandler*>::iterator it;
+	for (it = requests_.begin(); it == requests_.end(); ++it) {
+		if (!(RequestHandler*)(*it)->is_active()) zombies.push_back(it);
+	}
+
+	BOOST_FOREACH(it, zombies) requests_.erase(it);
+}
+
+
+void
 ProtocolBufferServer::send(Serializable& data,
 			   boost::system::error_code& error) {
 	//pair<string, RequestHandler*> pair_;
+	reconfigure_handlers();
 	RequestHandler* request = NULL;
 	BOOST_FOREACH(request, requests_) {
 		//RequestHandler* request = pair_.second;
@@ -543,6 +566,7 @@ ProtocolBufferServer::handle_accept(RequestHandler* new_session,
 		// }
 		// string hostname_ = endpoint.address().to_string();
 		// DEBUG_PRINTLN("HOSTNAME: %s", hostname_.c_str());
+		reconfigure_handlers();
 		register_request(new_session);
 		if(!new_session->start()) {
 			DEBUG_PRINTLN("new session start failed.");

@@ -2,18 +2,18 @@
 #include <string>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
-#include "protobuf_utils/utils.hpp"
+#include "protobuf.net.hpp"
 #include "comm.pb.h"
 
 using comm::Message;
 using comm::Data;
 using std::string;
 
-using protobuf_utils::Serializable;
-using protobuf_utils::DataBuilder;
-using protobuf_utils::Recievable;
-using protobuf_utils::ProtocolBufferServer;
-using protobuf_utils::ProtocolBufferClient;
+using protobuf::Serializable;
+using protobuf::DataBuilder;
+using protobuf::Recievable;
+using protobuf::ProtocolBufferServer;
+using protobuf::ProtocolBufferClient;
 
 
 class MessageImpl

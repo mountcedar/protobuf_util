@@ -21,7 +21,7 @@ using std::stringstream;
 using std::pair;
 
 #if !defined NAMESPACE_PROTOBUF_UTILS
-#define NAMESPACE_PROTOBUF_UTILS protobuf_utils
+#define NAMESPACE_PROTOBUF_UTILS protobuf
 #endif //#if !defined NAMESPACE_PROTOBUF_UTILS
 
 #define BEGIN_NAMESPACE_PROTOBUF_UTILS namespace NAMESPACE_PROTOBUF_UTILS {

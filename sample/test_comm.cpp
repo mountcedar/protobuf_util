@@ -12,8 +12,8 @@ using std::string;
 using protobuf::Serializable;
 using protobuf::DataBuilder;
 using protobuf::Recievable;
-using protobuf::ProtocolBufferServer;
-using protobuf::ProtocolBufferClient;
+using protobuf::ProtocolBuffersServer;
+using protobuf::ProtocolBuffersClient;
 
 
 class MessageImpl
@@ -78,16 +78,16 @@ private:
 int main(int argc, char* argv[])
 {
 	MessageImpl msg_impl;
-	//ProtocolBufferServer server(1111, msg_impl);
-	//boost::shared_ptr<ProtocolBufferServer> server_ptr(new ProtocolBufferServer(1111, msg_impl));
+	//ProtocolBuffersServer server(1111, msg_impl);
+	//boost::shared_ptr<ProtocolBuffersServer> server_ptr(new ProtocolBuffersServer(1111, msg_impl));
 	boost::system::error_code error;
-	boost::shared_ptr<ProtocolBufferServer> server_ptr = ProtocolBufferServer::create(1111, msg_impl, error);
+	boost::shared_ptr<ProtocolBuffersServer> server_ptr = ProtocolBuffersServer::create(1111, msg_impl, error);
 	if (error) {
 		ERROR_PRINTLN("failed to activate server.");
 		return -1;
 	}
-	//boost::shared_ptr<ProtocolBufferServer> server_ptr((ProtocolBufferServer*)NULL);
-	ProtocolBufferServer& server(*server_ptr.get());	
+	//boost::shared_ptr<ProtocolBuffersServer> server_ptr((ProtocolBuffersServer*)NULL);
+	ProtocolBuffersServer& server(*server_ptr.get());	
 	server.register_reciever(&msg_impl);
 
 	Message msg;
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 	impl.print();
 	DEBUG_PRINTLN("serialized size: %d", impl.getSerializedSize());
 
-	ProtocolBufferClient client("localhost", 1111, msg_impl);
+	ProtocolBuffersClient client("localhost", 1111, msg_impl);
 
 	boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 	for (int i = 0; i < 10; i++) {
@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 	
-	boost::thread bt(boost::bind(&ProtocolBufferServer::send, 
+	boost::thread bt(boost::bind(&ProtocolBuffersServer::send, 
 				     &server, 
 				     impl, 
 				     error

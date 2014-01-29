@@ -12,8 +12,7 @@ using std::string;
 using protobuf::Serializable;
 using protobuf::DataBuilder;
 using protobuf::Recievable;
-using protobuf::ProtocolBufferServer;
-using protobuf::ProtocolBufferClient;
+using protobuf::ProtocolBuffersClient;
 
 
 class MessageImpl
@@ -88,7 +87,7 @@ int main(int argc, char* argv[])
 	impl.print();
 	DEBUG_PRINTLN("serialized size: %d", impl.getSerializedSize());
 
-	ProtocolBufferClient client("localhost", 1111, msg_impl);
+	ProtocolBuffersClient client("localhost", 1111, msg_impl);
 
 	boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 	for (int i = 0; i < 10; i++) {

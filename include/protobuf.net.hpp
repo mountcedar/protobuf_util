@@ -155,7 +155,7 @@ public:
 };
 
 
-class ProtocolBufferServer;
+class ProtocolBuffersServer;
 class RequestHandler;
 
 /**
@@ -173,7 +173,7 @@ class RequestHandler;
  */
 class RequestHandler {
 public:
-	RequestHandler(ProtocolBufferServer& host,
+	RequestHandler(ProtocolBuffersServer& host,
 		       boost::asio::io_service& io_service, 
 		       DataBuilder& builder,
 		       vector<Recievable*>& recievers);
@@ -197,7 +197,7 @@ public:
 	bool is_active(void);
 
 private:
-	ProtocolBufferServer& host_;
+	ProtocolBuffersServer& host_;
 	tcp::socket socket_;
 	int buff_size_;
 	boost::shared_ptr<char> buff_;
@@ -209,21 +209,21 @@ private:
 
 
 /**
-   The Class ProtocolBufferServer.
+   The Class ProtocolBuffersServer.
    @brief the server to stream or receive protocol buffer
    @details
    this code is original from
-   - https://github.com/mountcedar/local.protobuf.socket/blob/master/src/local/protobuf/socket/server/ProtocolBufferServer.java
+   - https://github.com/mountcedar/local.protobuf.socket/blob/master/src/local/protobuf/socket/server/ProtocolBuffersServer.java
    @author sugiyama
  */
-class ProtocolBufferServer {
+class ProtocolBuffersServer {
 public:
-	static boost::shared_ptr<ProtocolBufferServer> create(
+	static boost::shared_ptr<ProtocolBuffersServer> create(
 		short port, 
 		DataBuilder& builder, 
 		boost::system::error_code& error);
 
-	~ProtocolBufferServer(void);
+	~ProtocolBuffersServer(void);
 
 	void register_reciever(Recievable* reciever);
 
@@ -253,7 +253,7 @@ private:
 	vector<RequestHandler*> requests_;
 	static boost::system::error_code connection_error_;
 
-	ProtocolBufferServer(short port,
+	ProtocolBuffersServer(short port,
 			     DataBuilder& builder);
 };
 
@@ -261,7 +261,7 @@ private:
 // Definition of RequestHandler
 ///////////////////////////////////////////////////////////////////////////////////////
 
-RequestHandler::RequestHandler(ProtocolBufferServer& host,
+RequestHandler::RequestHandler(ProtocolBuffersServer& host,
 			       boost::asio::io_service& io_service, 
 			       DataBuilder& builder,
 			       vector<Recievable*>& recievers)
@@ -433,10 +433,10 @@ RequestHandler::is_active(void) {
 ///////////////////////////////////////////////////////////////////////////////////////
 
 boost::system::error_code 
-ProtocolBufferServer::connection_error_((int)boost::system::errc::address_not_available,
+ProtocolBuffersServer::connection_error_((int)boost::system::errc::address_not_available,
 					boost::system::system_category());
 
-ProtocolBufferServer::ProtocolBufferServer(short port,
+ProtocolBuffersServer::ProtocolBuffersServer(short port,
 					   DataBuilder& builder)
 	: io_service_(),
 	  acceptor_(io_service_, tcp::endpoint(tcp::v4(), port)),
@@ -468,63 +468,63 @@ ProtocolBufferServer::ProtocolBufferServer(short port,
 
 	acceptor_.async_accept(
 		request.get()->socket(),
-		boost::bind(&ProtocolBufferServer::handle_accept, 
+		boost::bind(&ProtocolBuffersServer::handle_accept, 
 			    this, 
 			    request.get(),
 			    boost::asio::placeholders::error)
 		);
 }
 
-ProtocolBufferServer::~ProtocolBufferServer(void) {
+ProtocolBuffersServer::~ProtocolBuffersServer(void) {
 	io_service_.stop();
 	terminate_ = true;
 	thread_.timed_join(boost::posix_time::milliseconds(500));
 	terminate_ = false;
-	DEBUG_PRINTLN("ProtocolBufferServer terminated.");
+	DEBUG_PRINTLN("ProtocolBuffersServer terminated.");
 }
 
 
-boost::shared_ptr<ProtocolBufferServer> 
-ProtocolBufferServer::create(short port, DataBuilder& builder,
+boost::shared_ptr<ProtocolBuffersServer> 
+ProtocolBuffersServer::create(short port, DataBuilder& builder,
 			     boost::system::error_code& error) {
 	try {
-		ProtocolBufferServer* serverp = new ProtocolBufferServer(port, builder);
+		ProtocolBuffersServer* serverp = new ProtocolBuffersServer(port, builder);
 		if (!serverp) {
-			ERROR_PRINTLN("cannot create ProtocolBufferServer object.");
+			ERROR_PRINTLN("cannot create ProtocolBuffersServer object.");
 			error = connection_error_;
 		}
-		boost::shared_ptr<ProtocolBufferServer> server(serverp);
+		boost::shared_ptr<ProtocolBuffersServer> server(serverp);
 		return server;
 	} catch (...) {
-		ERROR_PRINTLN("failed to created ProtocolBufferServer object.");
+		ERROR_PRINTLN("failed to created ProtocolBuffersServer object.");
 		error = connection_error_;
-		boost::shared_ptr<ProtocolBufferServer> server((ProtocolBufferServer*)NULL);
+		boost::shared_ptr<ProtocolBuffersServer> server((ProtocolBuffersServer*)NULL);
 		return server;
 	}
 }
 
 void 
-ProtocolBufferServer::register_reciever(Recievable* reciever) {
+ProtocolBuffersServer::register_reciever(Recievable* reciever) {
 	recievers_.push_back(reciever);
 }
 
 const vector<Recievable*> 
-ProtocolBufferServer::get_recievers(void) {
+ProtocolBuffersServer::get_recievers(void) {
 	return recievers_;
 }
 
 void
-ProtocolBufferServer::register_request(RequestHandler* request) {
+ProtocolBuffersServer::register_request(RequestHandler* request) {
 	requests_.push_back(request);
 }
 
 void
-ProtocolBufferServer::deregister_request(RequestHandler* request) {
+ProtocolBuffersServer::deregister_request(RequestHandler* request) {
 	//requests_.erase(&hostname);
 }
 
 void
-ProtocolBufferServer::reconfigure_handlers(void) {
+ProtocolBuffersServer::reconfigure_handlers(void) {
 	RequestHandler* handler = NULL;
 	vector<vector<RequestHandler*>::iterator> zombies;
 
@@ -538,7 +538,7 @@ ProtocolBufferServer::reconfigure_handlers(void) {
 
 
 void
-ProtocolBufferServer::send(Serializable& data,
+ProtocolBuffersServer::send(Serializable& data,
 			   boost::system::error_code& error) {
 	//pair<string, RequestHandler*> pair_;
 	reconfigure_handlers();
@@ -555,7 +555,7 @@ ProtocolBufferServer::send(Serializable& data,
 }
 
 void 
-ProtocolBufferServer::handle_accept(RequestHandler* new_session,
+ProtocolBuffersServer::handle_accept(RequestHandler* new_session,
 				    const boost::system::error_code& error) {
 	DEBUG_PRINTLN("ACCEPTED");
 	if (!error || !terminate_) {
@@ -582,7 +582,7 @@ ProtocolBufferServer::handle_accept(RequestHandler* new_session,
 		acceptor_.async_accept(
 			request.get()->socket(),
 			boost::bind(
-				&ProtocolBufferServer::handle_accept, 
+				&ProtocolBuffersServer::handle_accept, 
 				this, 
 				request.get(),
 				boost::asio::placeholders::error
@@ -596,9 +596,9 @@ ProtocolBufferServer::handle_accept(RequestHandler* new_session,
 }
 
 
-class ProtocolBufferClient {
+class ProtocolBuffersClient {
 public:
-	ProtocolBufferClient(const string& hostname, 
+	ProtocolBuffersClient(const string& hostname, 
 			     int port, 
 			     DataBuilder& builder)
 		: io_service(), 

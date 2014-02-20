@@ -7,86 +7,35 @@
 #include "protobuf.net.hpp"
 #include "comm.pb.h"
 
-using comm::Message;
-using comm::Data;
 using std::string;
-
+using comm::Data;
+using protobuf::Message;
 using protobuf::Serializable;
-using protobuf::DataBuilder;
-using protobuf::Recievable;
 using protobuf::ProtocolBuffersClient;
 
-
-class MessageImpl
-	: public Serializable, 
-	  public DataBuilder, 
-	  public Recievable 
-{
-public:
-	Message msg;
-	
-	MessageImpl(Message& data): msg(data), binary() {
-		msg.SerializeToString(&binary);
-	}
-
-	MessageImpl(void): msg(), binary() {}
-
-	virtual ~MessageImpl() {}
-
-	int getSerializedSize() {
-		return binary.size();
-	}
-
-	bool serialize(string& output) {
-		msg.SerializeToString(&output);
-		return true;
-	}
-
-	bool deserialize(const string& data) {
-		msg.ParseFromString(data);
-		binary = data;
-		return true;
-	}
-
-	bool onRecv(Serializable* data) {
-		DEBUG_PRINTLN("on recv");
-		MessageImpl* impl = (MessageImpl*)data;
-		impl->print();
-		return true;
-	}
-
-	Serializable* create(string& data) {
-		Message temp;
-		temp.ParseFromString(data);
-		return (Serializable*)new MessageImpl(temp);
-	}
-
-	void print(void) {
-		fprintf(stderr, "%d\n", msg.id());
-		fprintf(stderr, "data size: %d\n", msg.data_size());
-		for (int i = 0; i < msg.data_size(); i++) {
-			const Data& _data = msg.data(i);
-			fprintf(stderr,
-				"\tstatus: %s\n", 
-				_data.status().c_str());
-		}
-	}
-
-private:
-	string binary;
-};
+inline void print_msg (const comm::Message& msg) {
+	fprintf(stderr, "%d\n", msg.id());
+	fprintf(stderr, "data size: %d\n", msg.data_size());
+	for (int i = 0; i < msg.data_size(); i++) {
+		const Data& _data = msg.data(i);
+		fprintf(stderr,
+			"\tstatus: %s\n", 
+			_data.status().c_str());
+	}	
+}
 
 int main(int argc, char* argv[])
 {
 	boost::system::error_code error;
 
-	MessageImpl msg_impl;
-	Message msg;
+	Message<comm::Message> msg_impl;
+	comm::Message msg;
 	msg.set_id(10);
-	msg.set_type(Message::ACK);
+	msg.set_type(comm::Message::ACK);
 	msg.add_data()->set_status("hogehoge");
-	MessageImpl impl(msg);
-	impl.print();
+	Message<comm::Message> impl(msg);
+	//impl.print();
+	print_msg (impl.get());
 	DEBUG_PRINTLN("serialized size: %d", impl.getSerializedSize());
 
 	ProtocolBuffersClient client("localhost", 1111, msg_impl);
@@ -106,8 +55,9 @@ int main(int argc, char* argv[])
 	boost::shared_ptr<Serializable> data;
 	client.recv(data, error);
 	if (!error) {
-		MessageImpl* impl = (MessageImpl*)data.get();
-		impl->print();
+		Message<comm::Message>* impl = (Message<comm::Message>*)data.get();
+		//impl->print();
+		print_msg (impl->get());
 	} else {
 		ERROR_PRINTLN("error occured while client recieving the data");
 		return -1;

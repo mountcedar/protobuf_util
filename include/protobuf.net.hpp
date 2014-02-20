@@ -156,6 +156,49 @@ public:
 	virtual ~DataBuilder(void) {}
 };
 
+template <class T>
+class Message
+	: public Serializable, 
+	  public DataBuilder
+{
+public:	
+	Message(T& data): msg(data), binary() {
+		msg.SerializeToString(&binary);
+	}
+
+	Message(void): msg(), binary() {}
+
+	virtual ~Message() {}
+
+	int getSerializedSize() {
+		return binary.size();
+	}
+
+	bool serialize(string& output) {
+		msg.SerializeToString(&output);
+		return true;
+	}
+
+	bool deserialize(const string& data) {
+		msg.ParseFromString(data);
+		binary = data;
+		return true;
+	}
+
+	Serializable* create(string& data) {
+		T temp;
+		temp.ParseFromString(data);
+		return (Serializable*)new Message(temp);
+	}
+
+	const T& get (void) {
+		return msg;
+	} 
+
+private:
+	T msg;	
+	string binary;
+};
 
 class ProtocolBuffersServer;
 class RequestHandler;

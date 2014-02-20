@@ -3,6 +3,7 @@
 #include <cstdlib>
 
 #include <vector>
+#include <list>
 #include <string>
 #include <map>
 #include <iostream>
@@ -15,6 +16,7 @@
 
 using boost::asio::ip::tcp;
 using std::vector;
+using std::list;
 using std::string;
 using std::map;
 using std::stringstream;
@@ -172,6 +174,8 @@ class RequestHandler;
    @author sugiyama
  */
 class RequestHandler {
+	friend class ProtocolBuffersServer;
+
 public:
 	RequestHandler(ProtocolBuffersServer& host,
 		       boost::asio::io_service& io_service, 
@@ -184,7 +188,9 @@ public:
 
 	tcp::socket& socket(void);
 
-	bool start(void);
+	bool start (void);
+
+	void stop (void);
 
 	void send(Serializable& data, boost::system::error_code& error);
 
@@ -196,7 +202,18 @@ public:
 
 	bool is_active(void);
 
+	void debugprint_hostname (void);
+
 private:
+	static list<RequestHandler*> on_duties;
+	static list<RequestHandler*> off_duties;
+	static boost::mutex m;
+
+	static void on_duty (RequestHandler* obj);
+	static void off_duty (RequestHandler* obj);
+	static void update_duties (void);
+	static void done (void);
+
 	ProtocolBuffersServer& host_;
 	tcp::socket socket_;
 	int buff_size_;
@@ -223,21 +240,19 @@ public:
 		DataBuilder& builder, 
 		boost::system::error_code& error);
 
-	~ProtocolBuffersServer(void);
+	~ProtocolBuffersServer (void);
 
-	void register_reciever(Recievable* reciever);
+	bool start (void);
 
-	//void register_request(string& hostname, RequestHandler* request);
-	void register_request(RequestHandler* request);
+	void stop (void);
 
-	//void deregister_request(string& hostname);
-	void deregister_request(RequestHandler* request);
+	void start_accept (void);
 
-	void reconfigure_handlers ();
+	void register_reciever (Recievable* reciever);
 
-	void send(Serializable& data, boost::system::error_code& error);
+	void send (Serializable& data, boost::system::error_code& error);
 
-	const vector<Recievable*> get_recievers(void);
+	const vector<Recievable*> get_recievers (void);
 
 	void handle_accept(RequestHandler* new_session,
 			   const boost::system::error_code& error);
@@ -247,19 +262,56 @@ private:
 	tcp::acceptor acceptor_;
 	DataBuilder& builder_;
 	vector<Recievable*> recievers_;
-	boost::thread thread_;
+	boost::thread* thread_;
 	bool terminate_;
-	//map<string, RequestHandler*> requests_;
 	vector<RequestHandler*> requests_;
 	static boost::system::error_code connection_error_;
 
-	ProtocolBuffersServer(short port,
-			     DataBuilder& builder);
+	ProtocolBuffersServer(short port, DataBuilder& builder);
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Definition of RequestHandler
 ///////////////////////////////////////////////////////////////////////////////////////
+
+list<RequestHandler*> RequestHandler::on_duties;
+list<RequestHandler*> RequestHandler::off_duties;
+boost::mutex RequestHandler::m;
+
+void 
+RequestHandler::on_duty (RequestHandler* obj) {
+	boost::mutex::scoped_lock lock(m);
+	on_duties.push_back (obj);
+}
+
+void
+RequestHandler::off_duty (RequestHandler* obj) {
+	boost::mutex::scoped_lock lock(m);
+	off_duties.push_back (obj);
+}
+
+void 
+RequestHandler::update_duties (void) {
+	boost::mutex::scoped_lock lock(m);
+	RequestHandler* obj;
+	BOOST_FOREACH(obj, off_duties) {
+		// vector<RequestHandler*>::iterator end_it = on_duties.remove (on_duties.begin(), on_duties.end(), obj);
+		// on_duties.erase (end_it, on_duties.end());
+		on_duties.remove (obj);
+		delete obj;
+	}
+	off_duties.clear ();
+}
+
+void 
+RequestHandler::done (void) {
+	boost::mutex::scoped_lock lock(m);
+	RequestHandler* obj;
+	BOOST_FOREACH (obj, on_duties) {
+		delete obj;
+	}
+	on_duties.clear();
+}
 
 RequestHandler::RequestHandler(ProtocolBuffersServer& host,
 			       boost::asio::io_service& io_service, 
@@ -273,6 +325,7 @@ RequestHandler::RequestHandler(ProtocolBuffersServer& host,
 	  active_(false),
 	  hostname_()
 {
+	on_duty (this);
 }
 
 RequestHandler::~RequestHandler(void) {}
@@ -282,6 +335,7 @@ RequestHandler::finalize(void) {
 	active_ = false;
 	//host_.deregister_request(hostname_);
 	//host_.deregister_request(this);
+
 	DEBUG_PRINTLN("request handler terminated.");
 }
 
@@ -292,19 +346,7 @@ RequestHandler::socket() {
 
 bool
 RequestHandler::start() {
-	DEBUG_PRINTLN("STARTED");
-	boost::system::error_code error_;
-	boost::asio::ip::tcp::endpoint endpoint = socket_.remote_endpoint(error_);
-
-	if (error_) {
-		DEBUG_PRINTLN("endpoint error<%d>: %s", error_.value(), error_.message().c_str());
-		return false;
-	}
-
-	hostname_ = endpoint.address().to_string();
-	DEBUG_PRINTLN("HOSTNAME: %s", hostname_.c_str());
-
-	//host_.register_request(hostname_, this);
+	DEBUG_PRINTLN("STARTING");
 	char* buff = reinterpret_cast<char*>(&buff_size_);
 	DEBUG_PRINTLN("ASYNC READ SOME");
 
@@ -312,12 +354,14 @@ RequestHandler::start() {
 		//boost::asio::buffer(data, max_length),
 		boost::asio::buffer(buff, sizeof(int)),
 		boost::bind(
-			&RequestHandler::handle_read_size, this,
+			&RequestHandler::handle_read_size, 
+			this,
 			boost::asio::placeholders::error,
 			boost::asio::placeholders::bytes_transferred
 			)
 		);
 	active_ = true;
+	DEBUG_PRINTLN("STARTED");	
 	return true;
 }
 
@@ -341,6 +385,8 @@ RequestHandler::send(Serializable& data, boost::system::error_code& error) {
 	if (error) {
 		ERROR_PRINTLN("Failed to send size: %d", size);
 		return;
+	} else {
+		DEBUG_PRINTLN ("Succeeded to send size: %d", size);
 	}
 
 	//DEBUG_PRINTLN("writing data stream: <%s>", 
@@ -356,6 +402,8 @@ RequestHandler::send(Serializable& data, boost::system::error_code& error) {
 	if (error) {
 		ERROR_PRINTLN("Failed to send binary: %s", 
 			      serialized_data.c_str());
+	} else {
+		DEBUG_PRINTLN ("succeeded to send binary");
 	}
 
 	//DEBUG_PRINTLN("sending completed");
@@ -388,7 +436,7 @@ RequestHandler::handle_read_size(const boost::system::error_code& error,
 		
 	} else {
 		ERROR_PRINTLN("FAILED");
-		finalize();
+		off_duty (this);
 	}
 }
 
@@ -398,7 +446,7 @@ RequestHandler::handle_read_data(const boost::system::error_code& error,
 	if (!error) {
 		string input(reinterpret_cast<char const*>(buff_.get()), 
 			     bytes_transferred);
-		DEBUG_PRINTLN("input data size: %d", input.size());
+		DEBUG_PRINTLN("input data size: %lu", input.size());
 		Serializable* inst = builder_.create(input);
 		boost::shared_ptr<Serializable> data_obj(inst);
 		if (inst != NULL) {
@@ -418,14 +466,33 @@ RequestHandler::handle_read_data(const boost::system::error_code& error,
 		
 	} else {
 		ERROR_PRINTLN("FAILED");
-		//delete this;
-		finalize();
+		off_duty (this);
 	}	
 }
 
 bool
 RequestHandler::is_active(void) {
 	return active_;
+}
+
+
+void 
+RequestHandler::debugprint_hostname (void) {
+/**
+	@note
+	print out hostname. In mac os x, this procedure is not properly working for some reason, 
+	so only activate it in the linux.
+*/
+#if defined(__linux__)
+	boost::system::error_code error_;
+	boost::asio::ip::tcp::endpoint endpoint = socket_.remote_endpoint(error_);
+	if (error_) {
+		DEBUG_PRINTLN("endpoint error<%d>: %s", error_.value(), error_.message().c_str());
+	} else {
+		string hostname_ = endpoint.address().to_string();
+		DEBUG_PRINTLN("HOSTNAME: %s", hostname_.c_str());
+	}
+#endif // #if defined(__linux__)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -436,53 +503,25 @@ boost::system::error_code
 ProtocolBuffersServer::connection_error_((int)boost::system::errc::address_not_available,
 					boost::system::system_category());
 
-ProtocolBuffersServer::ProtocolBuffersServer(short port,
-					   DataBuilder& builder)
+ProtocolBuffersServer::ProtocolBuffersServer(short port, DataBuilder& builder)
 	: io_service_(),
 	  acceptor_(io_service_, tcp::endpoint(tcp::v4(), port)),
 	  builder_(builder),
 	  recievers_(),
-	  thread_(boost::bind(
-			  &boost::asio::io_service::run, 
-			  &io_service_
-			  )
-		  ),
+	  //thread_(boost::bind(&boost::asio::io_service::run, &io_service_)),
+	  thread_(NULL),
 	  terminate_(false),
 	  requests_()
 {
 	acceptor_.set_option(tcp::acceptor::reuse_address(true));
-	/*
-	RequestHandler* new_session = new RequestHandler(
-		*this,
-		io_service_, 
-		builder_, 
-		recievers_);
-	*/
-	boost::shared_ptr<RequestHandler> request(
-		new RequestHandler(
-			*this,
-			io_service_, 
-			builder_, 
-			recievers_)
-		);
-
-	acceptor_.async_accept(
-		request.get()->socket(),
-		boost::bind(&ProtocolBuffersServer::handle_accept, 
-			    this, 
-			    request.get(),
-			    boost::asio::placeholders::error)
-		);
+	start_accept();
 }
+
 
 ProtocolBuffersServer::~ProtocolBuffersServer(void) {
-	io_service_.stop();
-	terminate_ = true;
-	thread_.timed_join(boost::posix_time::milliseconds(500));
-	terminate_ = false;
+	stop();
 	DEBUG_PRINTLN("ProtocolBuffersServer terminated.");
 }
-
 
 boost::shared_ptr<ProtocolBuffersServer> 
 ProtocolBuffersServer::create(short port, DataBuilder& builder,
@@ -503,6 +542,27 @@ ProtocolBuffersServer::create(short port, DataBuilder& builder,
 	}
 }
 
+bool 
+ProtocolBuffersServer::start (void) {
+	if (thread_) return true;
+	DEBUG_PRINTLN("starting io service");
+	thread_ = new boost::thread(
+		boost::bind(&boost::asio::io_service::run, &io_service_)
+	);
+	DEBUG_PRINTLN("io service started.");
+	return true;
+}
+
+void 
+ProtocolBuffersServer::stop (void) {
+	if (!thread_) return;
+	io_service_.stop();
+	thread_->timed_join(boost::posix_time::milliseconds(500));
+	delete thread_;
+	thread_ = NULL;
+	return;
+}
+
 void 
 ProtocolBuffersServer::register_reciever(Recievable* reciever) {
 	recievers_.push_back(reciever);
@@ -514,37 +574,13 @@ ProtocolBuffersServer::get_recievers(void) {
 }
 
 void
-ProtocolBuffersServer::register_request(RequestHandler* request) {
-	requests_.push_back(request);
-}
-
-void
-ProtocolBuffersServer::deregister_request(RequestHandler* request) {
-	//requests_.erase(&hostname);
-}
-
-void
-ProtocolBuffersServer::reconfigure_handlers(void) {
-	RequestHandler* handler = NULL;
-	vector<vector<RequestHandler*>::iterator> zombies;
-
-	vector<RequestHandler*>::iterator it;
-	for (it = requests_.begin(); it == requests_.end(); ++it) {
-		if (!(RequestHandler*)(*it)->is_active()) zombies.push_back(it);
-	}
-
-	BOOST_FOREACH(it, zombies) requests_.erase(it);
-}
-
-
-void
 ProtocolBuffersServer::send(Serializable& data,
 			   boost::system::error_code& error) {
 	//pair<string, RequestHandler*> pair_;
-	reconfigure_handlers();
+	//reconfigure_handlers();
+	RequestHandler::update_duties();
 	RequestHandler* request = NULL;
-	BOOST_FOREACH(request, requests_) {
-		//RequestHandler* request = pair_.second;
+	BOOST_FOREACH(request, RequestHandler::on_duties) {
 		request->send(data, error);
 		if (error) {
 			ERROR_PRINTLN("failed to send data");
@@ -554,44 +590,36 @@ ProtocolBuffersServer::send(Serializable& data,
 	return;
 }
 
+void
+ProtocolBuffersServer::start_accept (void) {
+	// boost::shared_ptr<RequestHandler> request(
+	// 	new RequestHandler(*this, io_service_, builder_, recievers_)
+	// 	);
+
+	RequestHandler* new_session = new RequestHandler (*this, io_service_, builder_, recievers_);
+	acceptor_.async_accept(
+		new_session->socket(),
+		boost::bind(&ProtocolBuffersServer::handle_accept, 
+			    this, 
+			    new_session,
+			    boost::asio::placeholders::error)
+		);
+}
+
 void 
 ProtocolBuffersServer::handle_accept(RequestHandler* new_session,
 				    const boost::system::error_code& error) {
 	DEBUG_PRINTLN("ACCEPTED");
 	if (!error || !terminate_) {
-		// boost::system::error_code error_;
-		// boost::asio::ip::tcp::endpoint endpoint = new_session->socket().remote_endpoint(error_);
-		// if (error_) {
-		// 	DEBUG_PRINTLN("endpoint error<%d>: %s", error_.value(), error_.message().c_str());
-		// }
-		// string hostname_ = endpoint.address().to_string();
-		// DEBUG_PRINTLN("HOSTNAME: %s", hostname_.c_str());
-		reconfigure_handlers();
-		register_request(new_session);
+		new_session->debugprint_hostname();
 		if(!new_session->start()) {
 			DEBUG_PRINTLN("new session start failed.");
 		}
-		boost::shared_ptr<RequestHandler> request(
-			new RequestHandler(
-				*this,
-				io_service_, 
-				builder_, 
-				recievers_
-				)
-			);
-		acceptor_.async_accept(
-			request.get()->socket(),
-			boost::bind(
-				&ProtocolBuffersServer::handle_accept, 
-				this, 
-				request.get(),
-				boost::asio::placeholders::error
-				)
-			);
+		start_accept();
 	}
 	else {
 		ERROR_PRINTLN("FAILED to create new session");
-		//delete new_session;
+		delete new_session;
 	}
 }
 

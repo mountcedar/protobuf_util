@@ -15,7 +15,6 @@ using protobuf::Serializable;
 using protobuf::DataBuilder;
 using protobuf::Recievable;
 using protobuf::ProtocolBuffersServer;
-using protobuf::ProtocolBuffersClient;
 
 
 class MessageImpl
@@ -80,6 +79,8 @@ private:
 int main(int argc, char* argv[])
 {
 	MessageImpl msg_impl;
+	//ProtocolBuffersServer server(1111, msg_impl);
+	//boost::shared_ptr<ProtocolBuffersServer> server_ptr(new ProtocolBuffersServer(1111, msg_impl));
 	boost::system::error_code error;
 	boost::shared_ptr<ProtocolBuffersServer> server_ptr = ProtocolBuffersServer::create(1111, msg_impl, error);
 	if (error) {
@@ -89,9 +90,7 @@ int main(int argc, char* argv[])
 	//boost::shared_ptr<ProtocolBuffersServer> server_ptr((ProtocolBuffersServer*)NULL);
 	ProtocolBuffersServer& server(*server_ptr.get());	
 	server.register_reciever(&msg_impl);
-	server.start();
-
-	DEBUG_PRINTLN("protocol buffers server activated.");
+	boost::thread (boost::bind(&ProtocolBuffersServer::start, &server));
 
 	Message msg;
 	msg.set_id(10);
@@ -102,48 +101,17 @@ int main(int argc, char* argv[])
 	impl.print();
 	DEBUG_PRINTLN("serialized size: %d", impl.getSerializedSize());
 
-	ProtocolBuffersClient client("localhost", 1111, msg_impl);
-
-	boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
-	for (int i = 0; i < 10; i++) {
-		try {
-			client.send(impl);
-			boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
-		} catch (...) {
-			ERROR_PRINTLN("client send failed.");
-			return -1;
-		}
-	}
-
 	std::cout << "waiting... > ";
 	string input;
 	std::cin >> input;
 	
-	DEBUG_PRINTLN("server gonna send");
-	// server.send(impl, error);
-	// if (error) {
-	// 	ERROR_PRINTLN("error occured while server sending the data.");
-	// }
-	
-	boost::thread bt(boost::bind(&ProtocolBuffersServer::send, 
-				     &server, 
-				     impl, 
-				     error
-				 )
-		);
-
-
-	DEBUG_PRINTLN("client recieving data");
-	boost::shared_ptr<Serializable> data;
-	client.recv(data, error);
-	if (!error) {
-		MessageImpl* impl = (MessageImpl*)data.get();
-		impl->print();
-	} else {
-		ERROR_PRINTLN("error occured while client recieving the data");
+	server.send(impl, error);
+	if (error) {
+		ERROR_PRINTLN("error occured while server sending the data.");
+		return -1;
 	}
-
-	std::cout << "waiting ... > ";
+	
+	std::cout << "waiting... > ";	
 	std::cin >> input;
 	
 	return 0;

@@ -1,3 +1,5 @@
+#define ENABLE_DEBUGPRINT 1
+
 #include <stdio.h>
 #include <string>
 #include <boost/thread.hpp>

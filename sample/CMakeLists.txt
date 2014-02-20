@@ -75,7 +75,7 @@ endif()
 # プログラムの追加
 add_executable(
 	test_comm_server
-	test_comm.cpp
+	test_comm_server.cpp
 	comm.pb.cc
 	)
 
@@ -91,6 +91,17 @@ add_executable(
   comm.pb.cc
   )
 
+add_executable(
+  async_echo_server
+  async_echo_server.cpp
+  )
+
+add_executable(
+  echo_client
+  echo_client.cpp
+)
+
+
 # add_executable(
 # 	test_sensor_comm
 # 	test_sensor_comm.cpp
@@ -100,30 +111,46 @@ add_executable(
 
 if ( APPLE )
 
-   TARGET_LINK_LIBRARIES (test_comm_server
+  TARGET_LINK_LIBRARIES (test_comm_server
     	${Boost_LIBRARIES}
-	boost_system-mt
-	boost_date_time-mt
-	boost_thread-mt
-	protobuf
-	stdc++)
+    	boost_system-mt
+    	boost_date_time-mt
+    	boost_thread-mt
+    	protobuf
+    	stdc++)
 
-   TARGET_LINK_LIBRARIES (test_comm_client
+  TARGET_LINK_LIBRARIES (test_comm_client
       ${Boost_LIBRARIES}
-  boost_system-mt
-  boost_date_time-mt
-  boost_thread-mt
-  protobuf
-  stdc++)
+      boost_system-mt
+      boost_date_time-mt
+      boost_thread-mt
+      protobuf
+      stdc++)
 
-   TARGET_LINK_LIBRARIES (test_comm
+  TARGET_LINK_LIBRARIES (test_comm
       ${Boost_LIBRARIES}
-  boost_system-mt
-  boost_date_time-mt
-  boost_thread-mt
-  protobuf
-  stdc++
-  )
+      boost_system-mt
+      boost_date_time-mt
+      boost_thread-mt
+      protobuf
+      stdc++
+      )
+
+  TARGET_LINK_LIBRARIES (async_echo_server
+      ${Boost_LIBRARIES}
+      boost_system-mt
+      boost_date_time-mt
+      boost_thread-mt
+      stdc++
+      )
+
+  TARGET_LINK_LIBRARIES (echo_client
+      ${Boost_LIBRARIES}
+      boost_system-mt
+      boost_date_time-mt
+      boost_thread-mt
+      stdc++
+      )
 
 
  #   TARGET_LINK_LIBRARIES (test_sensor_comm

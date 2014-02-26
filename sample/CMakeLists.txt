@@ -152,40 +152,52 @@ if ( APPLE )
       stdc++
       )
 
-
- #   TARGET_LINK_LIBRARIES (test_sensor_comm
- #    	${Boost_LIBRARIES}
-	# boost_system-mt
-	# boost_date_time-mt
-	# boost_thread-mt
-	# protobuf
-	# stdc++)
-
 elseif ( UNIX )
 
   TARGET_LINK_LIBRARIES (test_comm_server
-   	${Boost_LIBRARIES}
-	boost_system
-	boost_date_time
-	boost_thread
-	protobuf
-	stdc++)
+    ${Boost_LIBRARIES}
+  	boost_system
+  	boost_date_time
+  	boost_thread
+  	protobuf
+  	stdc++
+  )
 
    TARGET_LINK_LIBRARIES (test_comm_client
     ${Boost_LIBRARIES}
-  boost_system
-  boost_date_time
-  boost_thread
-  protobuf
-  stdc++)
+    boost_system
+    boost_date_time
+    boost_thread
+    protobuf
+    stdc++
+  )
 
-   TARGET_LINK_LIBRARIES (test_comm
+  TARGET_LINK_LIBRARIES (test_comm
     ${Boost_LIBRARIES}
-  boost_system
-  boost_date_time
-  boost_thread
-  protobuf
-  stdc++)
+    boost_system
+    boost_date_time
+    boost_thread
+    protobuf
+    stdc++
+  )
+
+  TARGET_LINK_LIBRARIES (async_echo_server
+      ${Boost_LIBRARIES}
+      boost_system
+      boost_date_time
+      boost_thread
+      stdc++
+      )
+
+  TARGET_LINK_LIBRARIES (echo_client
+      ${Boost_LIBRARIES}
+      boost_system
+      boost_date_time
+      boost_thread
+      pthread
+      stdc++
+      )
+
 
  #   TARGET_LINK_LIBRARIES (test_sensor_comm
  #   	${Boost_LIBRARIES}
